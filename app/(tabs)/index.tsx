@@ -4,8 +4,40 @@ import { HelloWave } from '@/components/HelloWave';
 import ParallaxScrollView from '@/components/ParallaxScrollView';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
+import { StatusBar } from 'expo-status-bar';
+import { Text, View, TextInput, TouchableOpacity } from 'react-native';
+import { Client, Account, ID, Models } from 'react-native-appwrite';
+import React, { useState } from 'react';
+
+let client: Client;
+let account: Account;
+
+client = new Client();
+
+client
+  .setEndpoint("https://cloud.appwrite.io/v1")
+  .setProject("67193f63002da27b2ff0")
+  .setPlatform('com.example.my-app');
+
+  account = new Account(client);
 
 export default function HomeScreen() {
+  const [loggedInUser, setLoggedInUser] = useState<Models.User<Models.Preferences> | null>(null);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+
+  async function login(email: string, password: string) {
+    await account.createEmailPasswordSession(email, password);
+    setLoggedInUser(await account.get());
+  }
+
+  async function register(email: string, password: string, name: string) {
+    await account.create(ID.unique(), email, password, name);
+    await login(email, password);
+    setLoggedInUser(await account.get());
+  }
+
   return (
     <ParallaxScrollView
       headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
@@ -15,6 +47,57 @@ export default function HomeScreen() {
           style={styles.reactLogo}
         />
       }>
+        <View style={styles.root}>
+          <Text>
+          {loggedInUser ? `Logged in as ${loggedInUser.name}` : 'Not logged in'}
+          </Text>
+          <View>
+          <TextInput
+              style={styles.input}
+              placeholder="Email"
+              value={email}
+              onChangeText={(text) => setEmail(text)}
+          />
+          <TextInput
+              style={styles.input}
+              placeholder="Password"
+              value={password}
+              onChangeText={(text) => setPassword(text)}
+              secureTextEntry
+          />
+          <TextInput
+              style={styles.input}
+              placeholder="Name"
+              value={name}
+              onChangeText={(text) => setName(text)}
+          />
+
+          <TouchableOpacity
+              style={styles.button}
+              onPress={() => login(email, password)}
+          >
+              <Text>Login</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+              style={styles.button}
+              onPress={()=> register(email, password, name)}
+          >
+              <Text>Register</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+              style={styles.button}
+              onPress={async () => {
+              await account.deleteSession('current');
+              setLoggedInUser(null);
+              }}
+          >
+              <Text>Logout</Text>
+          </TouchableOpacity>
+          </View>
+      </View>
+
       <ThemedView style={styles.titleContainer}>
         <ThemedText type="title">Welcome!</ThemedText>
         <HelloWave />
@@ -51,20 +134,22 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
+  root: {
+    marginTop: 40, 
+    marginBottom: 40
+  },
+  input: {
+    height: 40,
+    borderColor: 'gray',
+    borderWidth: 1,
+    marginBottom: 10,
+    paddingHorizontal: 10,
+  },
+  button: {
+    backgroundColor: 'gray',
+    padding: 10,
+    marginBottom: 10,
     alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
   },
 });
+
